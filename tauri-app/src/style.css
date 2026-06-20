@@ -1,0 +1,108 @@
+/* ═══════════════════════════════════════════
+   pw4you v0.2 — Custom Styles
+   ═══════════════════════════════════════════ */
+
+/* ── Smooth Scrolling ────────────────────── */
+html { scroll-behavior: smooth; }
+
+/* ── Custom Scrollbar ────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* ── Selection Color ─────────────────────── */
+::selection {
+  background: rgba(200,164,92,0.3);
+  color: #fff;
+}
+
+/* ── Focus Ring ──────────────────────────── */
+input:focus, select:focus, button:focus-visible {
+  outline: none;
+}
+
+/* ── Tab Button Active State ─────────────── */
+.tab-btn.active {
+  background: rgba(200,164,92,0.15) !important;
+  color: #d4b870 !important;
+}
+
+/* ── Folder Card Hover ───────────────────── */
+.vault-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.vault-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+/* ── Folder Selection Dashed Zone ────────── */
+#select-folder-area {
+  transition: all 0.3s ease;
+}
+#select-folder-area:hover {
+  border-color: rgba(200,164,92,0.5) !important;
+  background: rgba(200,164,92,0.03);
+}
+
+/* ── Modal Backdrop ──────────────────────── */
+#modal-password { transition: opacity 0.2s ease; }
+
+/* ── Toast Animation ─────────────────────── */
+.toast {
+  animation: slideInRight 0.3s ease-out, fadeOutRight 0.3s ease-in forwards;
+  animation-delay: 0s, 3.5s;
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(100px); }
+}
+
+/* ── Lock Status Pulse ───────────────────── */
+@keyframes unlockPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92,184,120,0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(92,184,120,0); }
+}
+.unlock-indicator {
+  animation: unlockPulse 2s ease-in-out infinite;
+}
+
+/* ── Shake animation for errors ──────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+.shake { animation: shake 0.3s ease; }
+
+/* ── Tag / Badge ─────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+/* ── Verification Code Input ─────────────── */
+#verification-code-input {
+  letter-spacing: 0.3em;
+}
+
+/* ── Spinner ─────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

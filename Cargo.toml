@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "core",
+]
+exclude = [
+    "tauri-app/src-tauri",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["pw4you"]
+
+[profile.release]
+opt-level = "z"      # Optimize for minimum size
+lto = true           # Link-time optimization
+strip = true         # Strip debug symbols
+codegen-units = 1    # Single codegen unit for better optimization

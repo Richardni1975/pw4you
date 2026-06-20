@@ -1,0 +1,25 @@
+# Rust build output
+target/
+**/target/
+
+# Node modules
+tauri-app/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Build artifacts
+dist/
+*.exe
+*.msi
+
+# Logs
+*.log
