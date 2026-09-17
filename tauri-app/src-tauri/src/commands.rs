@@ -105,32 +105,25 @@ pub struct UnlockFolderResult {
     pub message: String,
 }
 
-#[tauri::command]
-pub fn unlock_folder(
-    args: UnlockFolderArgs,
-    state: State<AppState>,
+/// Open → unlock → decrypt a folder in one step.
+///
+/// Shared by [`unlock_folder`] (folders registered in the config list) and
+/// [`decrypt_orphaned_folder`] (folders encrypted on disk but missing from the
+/// config list). The folder's `.pw4lock` metadata holds everything needed to
+/// decrypt — the config list is only a registry, not the key store.
+fn unlock_and_decrypt(
+    folder_path: &Path,
+    display_name: &str,
+    password: &str,
 ) -> CmdResult<UnlockFolderResult> {
-    let folder_path = Path::new(&args.folder_path);
-    let config = state.config.lock().unwrap();
-    let display_name = config
-        .encrypted_folders
-        .iter()
-        .find(|e| e.path == args.folder_path)
-        .map(|e| e.name.clone())
-        .unwrap_or_else(|| "Unknown".to_string());
-    drop(config);
-
-    match inplace::open_folder(folder_path, &display_name) {
+    match inplace::open_folder(folder_path, display_name) {
         Ok(mut folder) => {
-            let _total_files = folder.metadata.entries.len() as u64;
-            match inplace::unlock_folder(&mut folder, &args.password) {
+            match inplace::unlock_folder(&mut folder, password) {
                 Ok(result) => match result {
                     UnlockResult::Success => {
                         // Immediately decrypt all files to restore originals
                         match inplace::decrypt_folder(&folder) {
                             Ok(summary) => {
-                                // Keep folder in config (marked as decrypted for re-encrypt)
-                                *state.folder.lock().unwrap() = None;
                                 CmdResult::ok(UnlockFolderResult {
                                     status: "success".into(),
                                     attempt_count: 0,
@@ -205,6 +198,69 @@ pub fn unlock_folder(
         }
         Err(e) => CmdResult::err(format!("无法打开加密文件夹: {}", e)),
     }
+}
+
+#[tauri::command]
+pub fn unlock_folder(
+    args: UnlockFolderArgs,
+    state: State<AppState>,
+) -> CmdResult<UnlockFolderResult> {
+    let folder_path = Path::new(&args.folder_path);
+    let config = state.config.lock().unwrap();
+    let display_name = config
+        .encrypted_folders
+        .iter()
+        .find(|e| e.path == args.folder_path)
+        .map(|e| e.name.clone())
+        .unwrap_or_else(|| "Unknown".to_string());
+    drop(config);
+
+    let result = unlock_and_decrypt(folder_path, &display_name, &args.password);
+
+    // On successful decrypt, clear the in-memory folder state
+    if let Some(data) = &result.data {
+        if data.status == "success" {
+            *state.folder.lock().unwrap() = None;
+        }
+    }
+    result
+}
+
+// ── Decrypt Orphaned Folder (encrypted but missing from registry) ──
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecryptOrphanedArgs {
+    pub folder_path: String,
+    pub password: String,
+}
+
+#[tauri::command]
+pub fn decrypt_orphaned_folder(
+    args: DecryptOrphanedArgs,
+    state: State<AppState>,
+) -> CmdResult<UnlockFolderResult> {
+    let folder_path = Path::new(&args.folder_path);
+
+    // Verify the folder is actually encrypted (has a .pw4lock) before trying.
+    match inplace::probe_folder_status(folder_path) {
+        Ok(probe) => {
+            if !probe.is_encrypted {
+                return CmdResult::err(format!(
+                    "所选文件夹不是加密文件夹（未找到隐藏的 .pw4lock 元数据文件）。\n\
+                     请确认选择了正确的文件夹，并在文件管理器中开启「显示隐藏项目」。\n\
+                     路径: {}",
+                    args.folder_path
+                ));
+            }
+        }
+        Err(e) => return CmdResult::err(format!("检查文件夹状态失败: {}", e)),
+    }
+
+    // Clear any stale in-memory folder state before decrypting a fresh folder.
+    *state.folder.lock().unwrap() = None;
+
+    unlock_and_decrypt(folder_path, "恢复", &args.password)
 }
 
 // ── Decrypt Folder ──────────────────────────────────

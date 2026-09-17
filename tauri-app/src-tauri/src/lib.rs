@@ -39,6 +39,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::encrypt_folder,
             commands::unlock_folder,
+            commands::decrypt_orphaned_folder,
             commands::decrypt_folder,
             commands::lock_folder,
             commands::get_folder_status,

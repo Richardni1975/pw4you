@@ -13,6 +13,7 @@ const state = {
   activeTab: 'folders',
   config: null,             // ConfigInfo from backend
   selectedFolderPath: null, // Path selected for encryption
+  orphanFolderPath: null,   // Path selected for manual (orphaned) decryption
   unlockTargetIndex: -1,    // Index in folders array for unlock modal
   forgotPasswordFolderIndex: -1,
   emailConfigured: false,
@@ -35,6 +36,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-bind-email').addEventListener('click', handleBindEmail);
   document.getElementById('btn-save-smtp').addEventListener('click', handleSaveSmtp);
   document.getElementById('btn-recover-v1').addEventListener('click', handleRecoverV1);
+
+  // Orphan decrypt modal
+  document.getElementById('orphan-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleDecryptOrphanedConfirm();
+  });
+  document.getElementById('modal-orphan').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeOrphanModal();
+  });
 
   // Auto-lock setting change
   document.getElementById('setting-autolock').addEventListener('change', async (e) => {
@@ -61,7 +70,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Escape to close modal
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePasswordModal();
+    if (e.key === 'Escape') {
+      closePasswordModal();
+      closeOrphanModal();
+    }
   });
 
   switchTab('folders');
@@ -808,6 +820,83 @@ async function handleRecoverV1() {
   }
 
   btn.textContent = '选择文件夹并恢复';
+  btn.disabled = false;
+}
+
+// ── Manual Decrypt (orphaned folder not in list) ──
+async function handleDecryptOrphaned() {
+  try {
+    const dialog = getDialog();
+    if (!dialog) {
+      toast('文件选择器不可用，请使用「加密新文件夹」页面的手动路径输入', 'error');
+      return;
+    }
+    const path = await dialog.open({
+      directory: true,
+      multiple: false,
+      title: '选择要解密的加密文件夹（包含隐藏的 .pw4lock 文件）',
+    });
+    if (!path) return;
+
+    state.orphanFolderPath = path;
+    document.getElementById('orphan-folder-path').textContent = '📁 ' + path;
+    document.getElementById('orphan-password').value = '';
+    document.getElementById('orphan-error').classList.add('hidden');
+    document.getElementById('modal-orphan').classList.remove('hidden');
+    document.getElementById('orphan-password').focus();
+  } catch (e) {
+    toast('选择文件夹失败: ' + e, 'error');
+  }
+}
+
+function closeOrphanModal() {
+  document.getElementById('modal-orphan').classList.add('hidden');
+  state.orphanFolderPath = null;
+}
+
+async function handleDecryptOrphanedConfirm() {
+  const path = state.orphanFolderPath;
+  const password = document.getElementById('orphan-password').value;
+  const errDiv = document.getElementById('orphan-error');
+  const btn = document.getElementById('btn-orphan-decrypt');
+
+  if (!path) {
+    errDiv.textContent = '请先选择要解密的文件夹';
+    errDiv.classList.remove('hidden');
+    return;
+  }
+  if (!password) {
+    errDiv.textContent = '请输入加密密码';
+    errDiv.classList.remove('hidden');
+    return;
+  }
+
+  btn.textContent = '⏳ ...';
+  btn.disabled = true;
+  errDiv.classList.add('hidden');
+
+  try {
+    const result = await invoke('decrypt_orphaned_folder', {
+      args: { folderPath: path, password }
+    });
+
+    if (result.ok && result.data.status === 'success') {
+      closeOrphanModal();
+      await loadFolders();
+      toast(`✅ 解密成功 — ${result.data.filesDecrypted} 个文件已恢复`, 'success');
+    } else if (result.ok) {
+      errDiv.textContent = result.data.message;
+      errDiv.classList.remove('hidden');
+    } else {
+      errDiv.textContent = result.error || '解密失败';
+      errDiv.classList.remove('hidden');
+    }
+  } catch (e) {
+    errDiv.textContent = '调用失败: ' + e;
+    errDiv.classList.remove('hidden');
+  }
+
+  btn.textContent = '🔓 解密';
   btn.disabled = false;
 }
 
